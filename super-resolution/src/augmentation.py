@@ -2,7 +2,9 @@ import random
 
 import cv2
 import numpy as np
-import torchvision.transforms as transforms
+import torch
+from PIL import Image
+from torchvision import transforms
 
 # Image Augmentation
 
@@ -46,8 +48,90 @@ def gaussianBlur(img, kernel_size, sigma):
     
     return img_tmp
     
+def randomGaussianBlur(img, kernel_size, sigma, p):
         
+    if np.random.rand() < p:
+        img_tmp = gaussianBlur(img, kernel_size, sigma)
+    else:
+        img_tmp = img.copy()
     
+    return img_tmp
+
+def randomGaussianNoise(img, mean, std, p):
+    
+    if np.random.rand() < p:
+        img_tmp = img.copy()
+        img_tmp = img_tmp + np.random.normal(mean, std, img_tmp.shape)
+        img_tmp = np.clip(img_tmp, 0, 255)
+        img_tmp = img_tmp.astype(np.uint8)
+    else:
+        img_tmp = img.copy()
+    
+    return img_tmp
+
+
+def color_jitter_pytorch(image, brightness, contrast, saturation, hue, random_order=True):
+    jitter_transform = transforms.ColorJitter(
+        brightness=brightness,
+        contrast=contrast,
+        saturation=saturation,
+        hue=hue
+    )
+
+    if random_order:
+        jitter_transforms = [
+            lambda img: transforms.ColorJitter(brightness=brightness)(img),
+            lambda img: transforms.ColorJitter(contrast=contrast)(img),
+            lambda img: transforms.ColorJitter(saturation=saturation)(img),
+            lambda img: transforms.ColorJitter(hue=hue)(img)
+        ]
+        random.shuffle(jitter_transforms)
+        transform = transforms.Compose(jitter_transforms)
+    else:
+        transform = jitter_transform
+
+    image = transform(image)
+
+    return image
+
+def randomRotateResize(img, size):
+    
+    angle_choice = [0, 90, 180, 270]
+    angle = random.choice(angle_choice)
+    
+    img_tmp = img.copy()
+    img_tmp = Image.fromarray(img_tmp)
+    img_tmp = transforms.RandomRotation(angle)(img_tmp)
+    img_tmp = transforms.Resize(size)(img_tmp)
+    img_tmp = np.array(img_tmp)
+    
+    return img_tmp
+
+def randomCutout(img, size, p):
+    
+    if np.random.rand() < p:
+        img_tmp = img.copy()
+        img_tmp = Image.fromarray(img_tmp)
+        img_tmp = transforms.RandomErasing(p=1, scale=(0.02, 0.25), ratio=(0.3, 3.3))(img_tmp)
+        img_tmp = transforms.Resize(size)(img_tmp)
+        img_tmp = np.array(img_tmp)
+    else:
+        img_tmp = img.copy()
+    
+    return img_tmp
+
+def randomFlip(img, p):
+    
+    if np.random.rand() < p:
+        img_tmp = img.copy()
+        img_tmp = Image.fromarray(img_tmp)
+        img_tmp = transforms.RandomHorizontalFlip(p=1)(img_tmp)
+        img_tmp = np.array(img_tmp)
+    else:
+        img_tmp = img.copy()
+    
+    return img_tmp
+
 # Graph Augmentation
 
 def randomDropAttr(X, p):
@@ -62,14 +146,22 @@ def randomDropAttr(X, p):
     
     return Xm
 
-def randomDropEdge(A, p):
+# def randomDropEdge(A, p):
     
-    mask = np.random.binomial(1, p, size=A.shape)
+#     mask = np.random.binomial(1, p, size=A.shape)
+#     if np.sum(mask) == 0:
+#         mask[np.random.randint(0, A.shape[0]), np.random.randint(0, A.shape[1])] = 1
     
-    if np.sum(mask) == 0:
-        mask[np.random.randint(0, A.shape[0]), np.random.randint(0, A.shape[1])] = 1
+#     Am = np.copy(A)
+#     Am[mask == 1] = 0
     
-    Am = np.copy(A)
-    Am[mask == 1] = 0
+#     return Am
+
+def randomDropEdge(E, p):
     
-    return Am
+    num_edge = E.shape[1]
+    idx_keep = np.random.choice(num_edge, int(num_edge * (1 - p)), replace=False)
+    Em = E[:, idx_keep]
+    
+    return Em
+
