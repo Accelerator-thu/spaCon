@@ -9,6 +9,8 @@ import torch
 import torchvision.transforms as transforms
 from PIL import Image
 from skimage.draw import polygon
+from torch_geometric.data import Data, DataLoader, Dataset
+from torch_sparse import coalesce
 
 eucDist = lambda x1, y1, x2, y2: np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 is_inside = lambda x, y, x2, y2: x >= 0 and x < x2 and y >= 0 and y < y2
@@ -189,8 +191,54 @@ def downSampleImg4x(img):
 
 # Graph Construction
 
-def constructHexGraph(spotWeb):
+def constructHexGraph(row_idx, col_idx):
+    
+    rel_idx = [(0, 2), (1, 1), (1, -1)]
     
     # order by tissue position
+    
+    assert row_idx.shape == col_idx.shape, "row_idx and col_idx must have the same shape"
+    
+    pos_idx = np.concatenate((row_idx.reshape(-1, 1), col_idx.reshape(-1, 1)), axis=1)
+    pos_dict = {}
+    for i in range(pos_idx.shape[0]):
+        pos_dict[tuple(pos_idx[i])] = i
+        
+    # construct graph
+    edge_idx = []
+    for i in range(pos_idx.shape[0]):
+        for j in range(6):
+            if tuple(pos_idx[i] + rel_idx[j]) in pos_dict:
+                edge_idx.append([i, pos_dict[tuple(pos_idx[i] + rel_idx[j])]])
+    
+    edge_idx = np.array(edge_idx)
+    edge_idx = np.concatenate((edge_idx, edge_idx[:, [1, 0]]), axis=0)
+    edge_idx = edge_idx.astype(int).T
+    
+    return edge_idx
+
+def prepareGraphData(visium_data, preprocessed=True, preprocess=None, compress=False, encoder=None):
+    
+    row_idx = visium_data.obs['array_row'].values
+    col_idx = visium_data.obs['array_col'].values
+    
+    # sparse X
+    X = visium_data.X   # in Compressed Sparse Row format
+    
+    if not preprocessed:
+        if preprocess is None:
+            raise ValueError("preprocess must be specified if preprocessed is False")
+        X = preprocess(X)
+    
+    if compress:
+        if encoder is None:
+            raise ValueError("encoder must be specified if compress is True")
+        X = encoder(X)
+    
+    # edge index
+    edge_idx = constructHexGraph(row_idx, col_idx)
+    
+    # construct graph
+    G = Data(x=torch.tensor(X.todense(), dtype=torch.float), edge_index=torch.tensor(edge_idx, dtype=torch.long))
     
     
