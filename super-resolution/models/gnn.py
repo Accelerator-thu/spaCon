@@ -35,26 +35,46 @@ class GNN(nn.Module):
             self.convs = nn.ModuleList()
             self.convs.append(GCNConv(self.in_channels, self.hidden_channels))
             for i in range(self.num_layers - 2):
-                self.convs.append(GCNConv(self.hidden_channels, self.hidden_channels))
-            self.convs.append(GCNConv(self.hidden_channels, self.out_channels))
+                self.convs.append(
+                    GCNConv(self.hidden_channels, self.hidden_channels))
+            self.convs.append(
+                GCNConv(self.hidden_channels, self.out_channels))
+            
         elif self.gnn_type == 'GAT':
             self.convs = nn.ModuleList()
-            self.convs.append(GATConv(self.in_channels, self.hidden_channels, heads=8, dropout=self.dropout))
+            self.convs.append(
+                GATConv(self.in_channels, self.hidden_channels, heads=8, dropout=self.dropout))
             for i in range(self.num_layers - 2):
-                self.convs.append(GATConv(self.hidden_channels * 8, self.hidden_channels, heads=8, dropout=self.dropout))
-            self.convs.append(GATConv(self.hidden_channels * 8, self.out_channels, heads=8, dropout=self.dropout))
+                self.convs.append(
+                    GATConv(self.hidden_channels * 8, self.hidden_channels, heads=8, dropout=self.dropout))
+            self.convs.append(
+                GATConv(self.hidden_channels * 8, self.out_channels, heads=8, dropout=self.dropout))
+            
         elif self.gnn_type == 'SAGE':
             self.convs = nn.ModuleList()
-            self.convs.append(SAGEConv(self.in_channels, self.hidden_channels))
+            self.convs.append(
+                SAGEConv(self.in_channels, self.hidden_channels))
             for i in range(self.num_layers - 2):
-                self.convs.append(SAGEConv(self.hidden_channels, self.hidden_channels))
-            self.convs.append(SAGEConv(self.hidden_channels, self.out_channels))
+                self.convs.append(
+                    SAGEConv(self.hidden_channels, self.hidden_channels))
+            self.convs.append(
+                SAGEConv(self.hidden_channels, self.out_channels))
+            
         elif self.gnn_type == 'GIN':
             self.convs = nn.ModuleList()
-            self.convs.append(GINConv(nn.Sequential(nn.Linear(self.in_channels, self.hidden_channels), nn.ReLU(), nn.Linear(self.hidden_channels, self.hidden_channels))))
+            self.convs.append(
+                GINConv(nn.Sequential(nn.Linear(self.in_channels, self.hidden_channels), 
+                                      nn.ReLU(), 
+                                      nn.Linear(self.hidden_channels, self.hidden_channels))))
             for i in range(self.num_layers - 2):
-                self.convs.append(GINConv(nn.Sequential(nn.Linear(self.hidden_channels, self.hidden_channels), nn.ReLU(), nn.Linear(self.hidden_channels, self.hidden_channels))))
-            self.convs.append(GINConv(nn.Sequential(nn.Linear(self.hidden_channels, self.out_channels), nn.ReLU(), nn.Linear(self.out_channels, self.out_channels))))
+                self.convs.append(
+                    GINConv(nn.Sequential(nn.Linear(self.hidden_channels, self.hidden_channels), 
+                                          nn.ReLU(), 
+                                          nn.Linear(self.hidden_channels, self.hidden_channels))))
+            self.convs.append(
+                GINConv(nn.Sequential(nn.Linear(self.hidden_channels, self.out_channels), 
+                                      nn.ReLU(), 
+                                      nn.Linear(self.out_channels, self.out_channels))))
             
         if self.batch_norm:
             self.batch_norms = nn.ModuleList()
